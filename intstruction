@@ -1,0 +1,4 @@
+
+1. Ставим БД
+    https://computingforgeeks.com/how-to-install-etcd-on-ubuntu-linux/
+2. Тащим необходимую либу для работы с БД go get go.etcd.io/etcd/client/v3
