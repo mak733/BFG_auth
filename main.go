@@ -1,6 +1,7 @@
 package main
 
 import (
+	"BFG_auth/IdP"
 	"BFG_auth/access_models"
 	"BFG_auth/access_models/types"
 	"context"
@@ -46,6 +47,14 @@ func main() {
 	model.CreateUser(types.IdUser(binary.BigEndian.Uint64(body.Key)), string(body.Key), body.Value)
 
 	//	3. Проводим с помощью IdP аутентификацию
+	password := "password"
+	IdP, err := IdP.NewIdp("ldap")
+	isAuthenticate, err := IdP.Authenticate("testuser", "newpassword")
 
+	if err != nil {
+		fmt.Println("Error during authentication:", err)
+		return
+	}
+	fmt.Printf("User %s with password %s is %d\n", username, password, isAuthenticate)
 	/*	4. Дальше плешем по ТЗ*/
 }
