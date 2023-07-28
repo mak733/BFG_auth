@@ -4,3 +4,5 @@
 2. Тащим необходимую либу для работы с БД go get go.etcd.io/etcd/client/v3
 go get go.etcd.io/etcd/clientv3@latest
 go get -u github.com/gin-gonic/gin
+3. Укладываем моки в БД
+etcdctl put "username" "{\"IdUser\" : 1,\"IdRoles\": [2,3], \"IdGroup\": [4], \"IdP\":\"ldap\"}"

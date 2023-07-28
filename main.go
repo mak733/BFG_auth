@@ -4,12 +4,9 @@ import (
 	"BFG_auth/IdP"
 	"BFG_auth/access_models"
 	"BFG_auth/access_models/types"
-	"context"
-	"encoding/binary"
+	"BFG_auth/repository"
+	types_repo "BFG_auth/repository/types"
 	"fmt"
-	"go.etcd.io/etcd/client/v3"
-	"log"
-	"time"
 )
 
 func main() {
@@ -17,38 +14,32 @@ func main() {
 	//  ...
 	//	2. Ищем юезера в БД, цепляем какой IdP для него установлен
 	username := "username"
-	cfg := clientv3.Config{
-		Endpoints:   []string{"http://localhost:2379"}, // Укажите здесь адрес(а) вашего etcd-сервера
-		DialTimeout: 5 * time.Second,
-	}
 
-	client, err := clientv3.New(cfg)
-	if err != nil {
-		fmt.Printf("Failed to create etcd client: %v\n", err)
-		return
-	}
-	defer client.Close()
+	//идем в репо за юзверем
 
-	resp, err := client.Get(context.Background(), username)
-	if err != nil {
-		log.Fatalf("Failed to get the response: %v", err)
-	}
+	repo, err := repository.NewRepository("etcd")
+	kv, err := repo.Read(types_repo.Key(username))
 
-	if resp.Count == 0 {
-		log.Fatalf("Failed to get user: %s", username)
-		return
-	}
-
-	body := resp.Kvs[0]
-	fmt.Printf("Get value by key %s: %s\n", body.Key, body.Value)
+	//идем в модельку и добавляем юзверя
 
 	model, err := access_models.CreateAccessControlModel("RBAC")
 
-	model.CreateUser(types.IdUser(binary.BigEndian.Uint64(body.Key)), string(body.Key), body.Value)
+	model.CreateUser(types.Uid(kv.Key), kv.Value)
+	if err != nil {
+		fmt.Println("Error create user:", err)
+		return
+	}
+
+	user, err := model.ReadUser(types.Uid(kv.Key))
+	if err != nil {
+		fmt.Println("Error read user:", err)
+		return
+	}
+	fmt.Printf("%+v", user)
 
 	//	3. Проводим с помощью IdP аутентификацию
 	password := "password"
-	IdP, err := IdP.NewIdp("ldap")
+	IdP, err := IdP.NewIdp(string(user.IdP))
 	isAuthenticate, err := IdP.Authenticate("testuser", "newpassword")
 
 	if err != nil {
