@@ -3,6 +3,7 @@ module BFG_auth
 go 1.20
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-ldap/ldap/v3 v3.4.5
 	github.com/pkg/errors v0.8.1
 	go.etcd.io/etcd/client/v3 v3.5.9

@@ -1,24 +1,33 @@
 package main
 
 import (
-	"BFG_auth/IdP"
 	"BFG_auth/access_models"
 	"BFG_auth/access_models/types"
+	"BFG_auth/controllers"
+	"BFG_auth/identity_providers"
 	"BFG_auth/repository"
-	types_repo "BFG_auth/repository/types"
+	types2 "BFG_auth/repository/types"
+	"BFG_auth/token_service"
+	"BFG_auth/view"
 	"fmt"
+	"time"
 )
 
 func main() {
-	//	1. Прилетает запрос юзер/пароль
-	//  ...
-	//	2. Ищем юезера в БД, цепляем какой IdP для него установлен
-	username := "username"
+	//  0. Создаём вьюху для обзения с юхверем
 
-	//идем в репо за юзверем
+	viewName := "http"
+	view, err := view.NewView(viewName)
+	if err != nil {
+		fmt.Print("Error create view %s: %s\n", viewName, err)
+		return
+	}
+	// Тут мы ждём прихода нового юзера, когда пришел лвим юхернейм и пароль от него
+	//  ...
+	//	2. Ищем юезера в БД, цепляем какой identity_providers для него установлен
 
 	repo, err := repository.NewRepository("etcd")
-	kv, err := repo.Read(types_repo.Key(username))
+	kv, err := repo.Read(types2.Key(username))
 
 	//идем в модельку и добавляем юзверя
 
@@ -37,15 +46,44 @@ func main() {
 	}
 	fmt.Printf("%+v", user)
 
-	//	3. Проводим с помощью IdP аутентификацию
+	//	4. Проводим с помощью identity_providers аутентификацию
 	password := "password"
-	IdP, err := IdP.NewIdp(string(user.IdP))
-	isAuthenticate, err := IdP.Authenticate("testuser", "newpassword")
+	IdP, err := identity_providers.NewIdp(string(user.IdP))
+	isAuthenticate, err := IdP.Authenticate(string(user.Uid), password)
 
 	if err != nil {
 		fmt.Println("Error during authentication:", err)
 		return
 	}
 	fmt.Printf("User %s with password %s is %d\n", username, password, isAuthenticate)
-	/*	4. Дальше плешем по ТЗ*/
+
+	// 5. Если все хорошо то генерим токен
+
+	if !isAuthenticate {
+		fmt.Println("Not authenticated")
+		return
+	}
+
+	tomenManager, err := token_service.CreateTokenManager("JWT")
+	token, err := tomenManager.GenerateToken(string(user.Uid))
+
+	if err != nil {
+		fmt.Println("Error during get token:", err)
+		return
+	}
+	fmt.Printf("User %s get new token for a %t\n", username, 24*time.Hour)
+
+	// 6. Создаём контроллер(АПИ).
+	os := "Ubuntu"
+	api, err := controllers.NewController(os)
+
+	if err != nil {
+		fmt.Println("Error during get API for %s:", os, err)
+		return
+	}
+	fmt.Printf("Use API for %s\n", os)
+
+	// 7. Тут мы открываем сесси в которой и будет происходить весь бизнес,
+	//	живет она пока токен жив, работает в потоке
+
 }
