@@ -3,6 +3,7 @@ package main
 import (
 	"BFG_auth/controllers"
 	"BFG_auth/token_service"
+	"github.com/pkg/errors"
 	"time"
 )
 
@@ -10,11 +11,11 @@ type Session struct {
 	Username     string
 	Token        string
 	TokenManager token_service.TokenManager
-	API          controllers.Controller
+	API          controllers.API
 	Expiry       time.Time
 }
 
-func NewSession(username string, token string, tokenManager token_service.TokenManager, api controllers.Controller, expiry time.Time) *Session {
+func NewSession(username string, token string, tokenManager token_service.TokenManager, api controllers.API, expiry time.Time) *Session {
 	return &Session{
 		Username:     username,
 		Token:        token,
@@ -46,10 +47,25 @@ func (s *Session) ExecuteCommand(command string) (string, error) {
 	}
 
 	// Если токен валиден, выполняем команду через API
-	/*response, err := s.API.CallAPI(command, s.Token)
+	controller, err := controllers.NewController(command)
 	if err != nil {
 		return "", err
-	}*/
+	}
 
-	return response, nil
+	switch command {
+	case "Name":
+		return controller.Name(), nil
+	case "Time":
+		return controller.Name(), nil
+	case "Disk":
+		return controller.Disk(), nil
+	case "Version":
+		return controller.Version(), nil
+	case "Network":
+		return controller.Network(), nil
+	case "Ram":
+		return controller.Ram(), nil
+	default:
+		return "", errors.New("no command in API")
+	}
 }
