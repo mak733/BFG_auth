@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        button {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+<h1>API Dashboard</h1>
+<button onclick="callApi('?command=Name')">Get System Name</button>
+<button onclick="callApi('?command=Time')">Get System Time</button>
+<button onclick="callApi('?command=Disk')">Get Disk Info</button>
+<button onclick="callApi('?command=Version')">Get System Version</button>
+<button onclick="callApi('?command=Network')">Get Network Info</button>
+<button onclick="callApi('?command=Ram')">Get RAM Info</button>
+
+<div id="api-result"></div>
+
+<script>
+    async function callApi(command) {
+        try {
+            const response = await fetch(`http://localhost:8080/api${command}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.text();
+            document.getElementById('api-result').innerHTML = data;
+        } catch (error) {
+            console.error('There has been a problem with your fetch operation:', error);
+        }
+    }
+</script>
+</body>
+</html>

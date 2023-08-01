@@ -1,0 +1,16 @@
+dn: uid=admin,ou=people,dc=localhost
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: admin
+uid: admin
+uidNumber: 5000
+gidNumber: 1000
+homeDirectory: /
+loginShell: /bin/bash
+gecos: admin
+userPassword: password
+shadowLastChange: 0
+shadowMax: 0
+shadowWarning: 0

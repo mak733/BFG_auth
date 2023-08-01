@@ -30,23 +30,27 @@ func (s *TokenService) GenerateToken(username string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 	return token.SignedString(secretKey)
 }
 
-func (s *TokenService) ValidateToken(tokenString string) (string, error) {
+func (s TokenService) ValidateToken(username, tokenString string) (bool, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
-		return "", errors.New("invalid token")
+		return false, errors.New("invalid token")
 	}
 
-	return claims.Username, nil
+	// проверяем, что имя пользователя в токене совпадает с именем пользователя, для которого мы генерировали токен
+	if claims.Username != username {
+		return false, errors.New("invalid token: username mismatch")
+	}
+
+	return true, nil
 }

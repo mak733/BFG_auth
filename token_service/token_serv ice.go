@@ -2,20 +2,37 @@ package token_service
 
 import (
 	"BFG_auth/token_service/JWT"
+	"errors"
 	"fmt"
-	"github.com/pkg/errors"
+	"sync"
 )
 
 type TokenManager interface {
 	GenerateToken(username string) (string, error)
-	ValidateToken(tokenString string) (string, error)
+	ValidateToken(username, token string) (bool, error)
 }
 
-func CreateTokenManager(managerName string) (TokenManager, error) {
+var (
+	mu            sync.Mutex                      // Для обеспечения безопасности при использовании в многопоточной среде
+	tokenManagers = make(map[string]TokenManager) // Кеш для экземпляров TokenManager
+)
+
+func GetTokenManager(managerName string) (TokenManager, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Если менеджер уже существует, вернуть его
+	if manager, exists := tokenManagers[managerName]; exists {
+		return manager, nil
+	}
+
+	// В противном случае создать новый
 	switch managerName {
-	case "JWC":
+	case "JWT":
 		fmt.Printf("Get %s\n", managerName)
-		return JWT.NewTokenService(), nil
+		manager := JWT.NewTokenService() // Предполагается, что у вас есть соответствующий код
+		tokenManagers[managerName] = manager
+		return manager, nil
 	default:
 		return nil, errors.New("unknown token manager type")
 	}
