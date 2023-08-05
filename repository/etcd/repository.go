@@ -14,13 +14,11 @@ type UserRepository struct {
 	Client *clientv3.Client
 }
 
-/*
-	func (repo *EtcdUserRepository) Create(user model.User) error {
-		_, err := repo.Client.Put(context.Background(), fmt.Sprintf("%d", user.Id),
-			fmt.Sprintf("%s:%d", user.Name, user.RoleIDs))
-		return err
-	}
-*/
+func (repo *UserRepository) Create(kv types.KV) error {
+	_, err := repo.Client.Put(context.Background(), string(kv.Key), string(kv.Value))
+	return err
+}
+
 func (repo *UserRepository) Read(id types.Key) (types.KV, error) {
 
 	resp, err := repo.Client.Get(context.Background(), string(id))
@@ -37,18 +35,15 @@ func (repo *UserRepository) Read(id types.Key) (types.KV, error) {
 	return types.KV{Key: body.Key, Value: body.Value}, nil
 }
 
-/*
-func (repo *EtcdUserRepository) Update(user model.User) error {
-	_, err := repo.Client.Put(context.Background(), fmt.Sprintf("%d", user.Id),
-		fmt.Sprintf("%s"))
+func (repo *UserRepository) Update(kv types.KV) error {
+	_, err := repo.Client.Put(context.Background(), string(kv.Key), string(kv.Value))
 	return err
 }
 
-func (repo *EtcdUserRepository) Delete(id model.IdUser) error {
-	_, err := repo.Client.Delete(context.Background(), string(id))
+func (repo *UserRepository) Delete(key types.Key) error {
+	_, err := repo.Client.Delete(context.Background(), string(key))
 	return err
 }
-*/
 
 func NewEtcd(endpoints []string, dialTimeout time.Duration) (*UserRepository, error) {
 	cfg := clientv3.Config{

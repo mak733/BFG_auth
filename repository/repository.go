@@ -9,7 +9,10 @@ import (
 
 // UserRepository abstracts the storage mechanism for Users
 type UserRepository interface {
+	Create(kv types.KV) error
 	Read(key types.Key) (types.KV, error)
+	Update(kv types.KV) error
+	Delete(key types.Key) error
 }
 
 func NewRepository(repoName string) (UserRepository, error) {
