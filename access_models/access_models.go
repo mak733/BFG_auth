@@ -15,6 +15,19 @@ type AccessControl interface {
 	CreateObject(id accessTypes.IdObject, attributes []byte) error
 
 	ReadUser(id accessTypes.Uid) (*accessTypes.User, error)
+	ReadRole(id accessTypes.Uid) (*accessTypes.Role, error)
+	ReadGroup(id accessTypes.Uid) (*accessTypes.Group, error)
+	ReadObject(id accessTypes.Uid) (*accessTypes.Object, error)
+
+	UpdateUser(id accessTypes.Uid, newUser *accessTypes.User) (bool, error)
+	UpdateRole(id accessTypes.Uid, newRole *accessTypes.Role) (bool, error)
+	UpdateGroup(id accessTypes.Uid, newGroup *accessTypes.Group) (bool, error)
+	UpdateObject(id accessTypes.Uid, newObject *accessTypes.Object) (bool, error)
+
+	DeleteUser(id accessTypes.Uid) (bool, error)
+	DeleteRole(id accessTypes.Uid) (bool, error)
+	DeleteGroup(id accessTypes.Uid) (bool, error)
+	DeleteObject(id accessTypes.Uid) (bool, error)
 }
 
 func NewAccessControlModel(modelName, repoName string) (AccessControl, error) {
