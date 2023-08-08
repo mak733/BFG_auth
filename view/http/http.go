@@ -3,6 +3,7 @@ package http
 import (
 	"BFG_auth/session"
 	"fmt"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"os"
 )
@@ -18,10 +19,28 @@ func (h *ViewHttp) StartServer(address string, sessionManager *session.Manager) 
 	http.HandleFunc("/api", h.handleApiRequests)
 	http.HandleFunc("/login", h.handleLogin)
 	http.HandleFunc("/", h.handleLogin)
+
+	http.HandleFunc("/swagger/doc.json", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./docs/swagger.json")
+	})
+
+	http.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("http://localhost:8080/swagger/doc.json"),
+	))
+
 	err := h.Server.ListenAndServe()
 	return err
 }
 
+// @Summary API Endpoint
+// @Description Get API details or execute a command
+// @ID get-api
+// @Produce  html
+// @Param command query string false "Command to execute"
+// @Success 200 {string} string "Success"
+// @Failure 403 {string} string "Forbidden"
+// @Failure 500 {string} string "Internal Server Error"
+// @Router /api [get]
 func (h *ViewHttp) handleApiRequests(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		// http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -91,6 +110,18 @@ func (h *ViewHttp) handleApiRequests(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// @Summary Login Endpoint
+// @Description Get login page or authenticate a user
+// @ID login
+// @Accept  json
+// @Produce  json
+// @Param username formData string true "Username"
+// @Param password formData string true "Password"
+// @Success 200 {string} string "Success"
+// @Failure 401 {string} string "Unauthorized"
+// @Failure 400 {string} string "Bad Request"
+// @Router /login [get]
+// @Router /login [post]
 func (h *ViewHttp) handleLogin(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("handle login method is %s\n", r.Method)
 
