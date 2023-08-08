@@ -25,72 +25,180 @@ func (s ServiceRBAC) readFromRepo(uid accessTypes.Uid) (error, repoTypes.Key, re
 	//идем в репо ищем юзера
 	kv, err := s.Repo.Read(repoTypes.Key(uid))
 	if err != nil {
-		return errors.New(fmt.Sprintf("No username %s in repo", uid)), nil, nil
+		return errors.New(fmt.Sprintf("No %s in repo", uid)), nil, nil
 	}
 	return nil, kv.Key, kv.Value
 }
 
+func (s ServiceRBAC) writeToRepo(kv repoTypes.KV) error {
+	//идем в репо ищем юзера
+	err := s.Repo.Create(kv)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // DefineUser defines a new user.
-func (s ServiceRBAC) CreateUser(username string) (*accessTypes.User, error) {
-	return nil, nil
+func (s ServiceRBAC) CreateUser(uid, idp string, newRoles, newGroups []string) (*accessTypes.User, error) {
+
+	user := accessTypes.User{
+		Uid: accessTypes.Uid(uid),
+		IdP: accessTypes.IdP(idp),
+	}
+	user.IdRoles = make([]accessTypes.IdRole, len(newRoles))
+	user.Roles = make(map[accessTypes.IdRole]*accessTypes.Role, len(newRoles))
+	for i, role := range newRoles {
+		readRole, err := s.ReadRole(accessTypes.Uid(role))
+		if err != nil {
+			return nil, err
+		}
+		user.IdRoles[i] = readRole.Id
+		user.Roles[readRole.Id] = readRole
+	}
+
+	user.IdGroups = make([]accessTypes.IdGroup, len(newGroups))
+	user.Groups = make(map[accessTypes.IdGroup]*accessTypes.Group, len(newGroups))
+	for i, group := range newGroups {
+		readGroup, err := s.ReadGroup(accessTypes.Uid(group))
+		if err != nil {
+			return nil, err
+		}
+		user.IdGroups[i] = readGroup.Id
+		user.Groups[readGroup.Id] = readGroup
+	}
+
+	jsonUser, err := json.Marshal(user)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.writeToRepo(repoTypes.KV{Key: repoTypes.Key(uid), Value: jsonUser})
+	if err != nil {
+		return nil, err
+	}
+
+	users[string(user.Uid)] = &user
+
+	return &user, nil
 }
 
 // DefineRole defines a new role.
-func (s ServiceRBAC) CreateRole(id accessTypes.IdRole, permissions []byte) error {
-	var role accessTypes.Role
+func (s ServiceRBAC) CreateRole(id string,
+	newPermissions map[accessTypes.IdObject]map[accessTypes.PermissionEnum]bool) (*accessTypes.Role, error) {
+	///TODO: check newPermissions, if not correct return error
 
-	json.Unmarshal(permissions, &role)
-	role.Id = id
-	//roles[id] = &role
+	idObjects := make([]accessTypes.IdObject, len(newPermissions))
 
-	return nil
+	i := 0
+	for idObject := range newPermissions {
+		idObjects[i] = idObject
+		i++
+	}
+
+	role := accessTypes.Role{
+		Id:        accessTypes.IdRole(id),
+		IdObjects: idObjects,
+	}
+
+	role.Permissions = make(map[accessTypes.IdObject]map[accessTypes.PermissionEnum]bool, len(newPermissions))
+	role.Permissions = newPermissions
+
+	jsonRole, err := json.Marshal(role)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.writeToRepo(repoTypes.KV{Key: repoTypes.Key(id), Value: jsonRole})
+	if err != nil {
+		return nil, err
+	}
+
+	roles[string(role.Id)] = &role
+
+	return &role, nil
 }
 
 // DefineGroup defines a new group.
-func (s ServiceRBAC) CreateGroup(id accessTypes.IdGroup, permissions []byte) error {
-	var group accessTypes.Group
-	json.Unmarshal(permissions, &group)
-	group.Id = id
-	//groups[id] = &group
-	return nil
+func (s ServiceRBAC) CreateGroup(id string, newRoles []string) (*accessTypes.Group, error) {
+	group := accessTypes.Group{
+		Id: accessTypes.IdGroup(id),
+	}
+
+	group.IdRoles = make([]accessTypes.IdRole, len(newRoles))
+	group.Roles = make(map[accessTypes.IdRole]*accessTypes.Role, len(newRoles))
+	for i, role := range newRoles {
+		readRole, err := s.ReadRole(accessTypes.Uid(role))
+		if err != nil {
+			return nil, err
+		}
+		group.IdRoles[i] = readRole.Id
+		group.Roles[readRole.Id] = readRole
+	}
+
+	jsonGroup, err := json.Marshal(group)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.writeToRepo(repoTypes.KV{Key: repoTypes.Key(id), Value: jsonGroup})
+	if err != nil {
+		return nil, err
+	}
+
+	groups[string(group.Id)] = &group
+
+	return &group, nil
 }
 
 // DefineObject defines a new object.
-func (s ServiceRBAC) CreateObject(id accessTypes.IdObject, attributes []byte) error {
+func (s ServiceRBAC) CreateObject(id accessTypes.IdObject) (*accessTypes.Object, error) {
 	var object accessTypes.Object
-	json.Unmarshal(attributes, &object)
 	object.Id = id
+
+	jsonObject, err := json.Marshal(object)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.writeToRepo(repoTypes.KV{Key: repoTypes.Key(id), Value: jsonObject})
+	if err != nil {
+		return nil, err
+	}
+
 	//objects[id] = &object
-	return nil
+	return &object, nil
 }
 
 func (s ServiceRBAC) ReadUser(uid accessTypes.Uid) (*accessTypes.User, error) {
-	err, id, attributes := s.readFromRepo(uid)
-
 	var user accessTypes.User
+
+	err, id, attributes := s.readFromRepo(uid)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
-	fmt.Printf("RBAC: read %s: %s\n", id, string(attributes))
 	err = json.Unmarshal(attributes, &user)
 
 	if err != nil {
 		return nil, err
 	}
 
-	for _, role := range user.Roles {
-		s.ReadRole(accessTypes.Uid(role))
+	for _, role := range user.IdRoles {
+		_, err := s.ReadRole(accessTypes.Uid(role))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	for _, group := range user.Groups {
-		s.ReadGroup(accessTypes.Uid(group))
+	for _, group := range user.IdGroups {
+		_, err := s.ReadGroup(accessTypes.Uid(group))
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	for _, object := range user.Objects {
-		s.ReadGroup(accessTypes.Uid(object))
-	}
-
+	fmt.Printf("RBAC: read user %s: %s\n", id, string(attributes))
 	user.Uid = accessTypes.Uid(id)
 	users[string(id)] = &user
 
@@ -102,35 +210,35 @@ func (s ServiceRBAC) ReadRole(uid accessTypes.Uid) (*accessTypes.Role, error) {
 
 	var role accessTypes.Role
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
-	fmt.Printf("RBAC: read %s: %s\n", id, string(attributes))
 	err = json.Unmarshal(attributes, &role)
 
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("RBAC: read role %s: %s\n", id, string(attributes))
 	roles[string(id)] = &role
 	return &role, nil
 }
 
 func (s ServiceRBAC) ReadGroup(uid accessTypes.Uid) (*accessTypes.Group, error) {
-	err, id, attributes := s.readFromRepo(uid)
-
 	var group accessTypes.Group
+
+	err, id, attributes := s.readFromRepo(uid)
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
-	fmt.Printf("RBAC: read %s: %s\n", id, string(attributes))
 	err = json.Unmarshal(attributes, &group)
 
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("RBAC: read group %s: %s\n", id, string(attributes))
 	groups[string(id)] = &group
 	return &group, nil
 }
@@ -140,7 +248,7 @@ func (s ServiceRBAC) ReadObject(uid accessTypes.Uid) (*accessTypes.Object, error
 
 	var object accessTypes.Object
 	if err != nil {
-		fmt.Println(err)
+		return nil, err
 	}
 
 	fmt.Printf("RBAC: read %s: %s\n", id, string(attributes))
@@ -156,12 +264,12 @@ func (s ServiceRBAC) ReadObject(uid accessTypes.Uid) (*accessTypes.Object, error
 
 func (s ServiceRBAC) UpdateUser(uid accessTypes.Uid, newUser *accessTypes.User) (bool, error) {
 	// Обновляем пользователя в репозитории
-	json, err := json.Marshal(newUser)
+	jsonUser, err := json.Marshal(newUser)
 	if err != nil {
 		return false, err
 	}
 
-	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: json})
+	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(newUser.Uid), Value: jsonUser})
 	if err != nil {
 		return false, err
 	}
@@ -172,12 +280,12 @@ func (s ServiceRBAC) UpdateUser(uid accessTypes.Uid, newUser *accessTypes.User) 
 
 func (s ServiceRBAC) UpdateRole(uid accessTypes.Uid, newRole *accessTypes.Role) (bool, error) {
 	// Обновляем роль в репозитории
-	json, err := json.Marshal(newRole)
+	jsonRole, err := json.Marshal(newRole)
 	if err != nil {
 		return false, err
 	}
 
-	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: json})
+	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: jsonRole})
 	if err != nil {
 		return false, err
 	}
@@ -188,12 +296,12 @@ func (s ServiceRBAC) UpdateRole(uid accessTypes.Uid, newRole *accessTypes.Role) 
 
 func (s ServiceRBAC) UpdateGroup(uid accessTypes.Uid, newGroup *accessTypes.Group) (bool, error) {
 	// Обновляем группу в репозитории
-	json, err := json.Marshal(newGroup)
+	jsonGroup, err := json.Marshal(newGroup)
 	if err != nil {
 		return false, err
 	}
 
-	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: json})
+	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: jsonGroup})
 	if err != nil {
 		return false, err
 	}
@@ -204,12 +312,12 @@ func (s ServiceRBAC) UpdateGroup(uid accessTypes.Uid, newGroup *accessTypes.Grou
 
 func (s ServiceRBAC) UpdateObject(uid accessTypes.Uid, newObject *accessTypes.Object) (bool, error) {
 	// Обновляем объект в репозитории
-	json, err := json.Marshal(newObject)
+	jsonObject, err := json.Marshal(newObject)
 	if err != nil {
 		return false, err
 	}
 
-	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: json})
+	err = s.Repo.Update(repoTypes.KV{Key: repoTypes.Key(uid), Value: jsonObject})
 	if err != nil {
 		return false, err
 	}

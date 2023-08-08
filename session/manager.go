@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-func (sm *Manager) GetUser(token string) (*accessTypes.User, error) {
-	sm.mtx.RLock()
-	defer sm.mtx.RUnlock()
+func (m *Manager) GetUser(token string) (*accessTypes.User, error) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
 
-	session, ok := sm.users[token]
+	session, ok := m.users[token]
 	if !ok {
 		return nil, errors.New("no session for token")
 	}
@@ -54,6 +54,48 @@ func NewSessionManager(apiName, modelName,
 		fmt.Printf("Error make token manager %s\n", tokenManagerName)
 	}
 
+	///TEST
+
+	///create role for user
+	var readPermission accessTypes.PermissionEnum
+	readPermission = "Read"
+	t := make(map[accessTypes.IdObject]map[accessTypes.PermissionEnum]bool)
+	// Check if the map for "Time" exists; if not, create it
+	if t["Time"] == nil {
+		t["Time"] = make(map[accessTypes.PermissionEnum]bool)
+	}
+	// Now you can assign a value for the permission
+	t["Time"][readPermission] = true
+	_, err = model.CreateRole("R_Admin", t)
+
+	///create role for group
+	m := make(map[accessTypes.IdObject]map[accessTypes.PermissionEnum]bool)
+	// Check if the map for "Time" exists; if not, create it
+	if m["Name"] == nil {
+		m["Name"] = make(map[accessTypes.PermissionEnum]bool)
+	}
+	// Now you can assign a value for the permission
+	m["Name"][readPermission] = true
+	_, err = model.CreateRole("R_AdminG", m)
+
+	//create group
+	_, err = model.CreateGroup("G_Admin", []string{"R_AdminG"})
+
+	//create user
+	user, err := model.CreateUser("Admin", "ldap", []string{"R_Admin"}, []string{"G_Admin"})
+	if err != nil {
+		return nil, err
+	}
+	//update user
+	user.Uid = "admin"
+	user.IdP = "ldap"
+	_, err = model.UpdateUser(user.Uid, user)
+	if err != nil {
+		return nil, err
+	}
+
+	//end TEST
+
 	return &Manager{
 		users:        make(map[string]*accessTypes.User),
 		api:          api,
@@ -62,20 +104,20 @@ func NewSessionManager(apiName, modelName,
 	}, nil
 }
 
-func (sm *Manager) CloseSession(token string) error {
-	sm.mtx.Lock()
-	defer sm.mtx.Unlock()
+func (m *Manager) CloseSession(token string) error {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 
-	_, ok := sm.users[token]
+	_, ok := m.users[token]
 	if !ok {
 		return errors.New("No user in model")
 	}
 
-	delete(sm.users, token)
+	delete(m.users, token)
 	return nil
 }
 
-func (sm *Manager) Authenticate(username, password string) (string, error) {
+func (m *Manager) Authenticate(username, password string) (string, error) {
 
 	idp := "ldap"
 	//читаем пользака из etcd для определения idp
@@ -108,7 +150,7 @@ func (sm *Manager) Authenticate(username, password string) (string, error) {
 		return "", err
 	}
 
-	token, err := sm.tokenManager.GenerateToken(username)
+	token, err := m.tokenManager.GenerateToken(username)
 
 	if err != nil {
 		return "", err
@@ -118,69 +160,61 @@ func (sm *Manager) Authenticate(username, password string) (string, error) {
 	return token, nil
 }
 
-func (sm *Manager) Authorize(username, token string) error {
+func (m *Manager) Authorize(username, token string) error {
 	//если уже авторизован то ретерн без ошибки
-	sm.mtx.RLock()
-	defer sm.mtx.RUnlock()
-	sessionUser, _ := sm.users[token]
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	sessionUser, _ := m.users[token]
 
 	if (sessionUser != nil) && (string(sessionUser.Uid) != username) {
 		return errors.New("Duplicate token! Session with given token already exists for another user.")
 	}
 
 	//добавим пользака в модель
-	user, err := sm.accessModel.ReadUser(accessTypes.Uid(username))
+	user, err := m.accessModel.ReadUser(accessTypes.Uid(username))
 	if err != nil {
 		return err
 	}
 	//open sessionUser
-	sm.users[token] = user
+	m.users[token] = user
 
 	return nil
 }
 
-func (sm *Manager) ValidateToken(token string) (bool, error) {
-	sm.mtx.RLock()
-	defer sm.mtx.RUnlock()
-	sessionUser, err := sm.GetUser(token)
+func (m *Manager) ValidateToken(token string) (bool, error) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	sessionUser, err := m.GetUser(token)
 	if err != nil {
 		return false, errors.New("no sessionUser for token")
 	}
 
-	return sm.tokenManager.ValidateToken(string(sessionUser.Uid), token)
+	return m.tokenManager.ValidateToken(string(sessionUser.Uid), token)
 }
 
-func (s *Manager) ExecuteCommand(user *accessTypes.User, command string) (string, error) {
+func (m *Manager) ExecuteCommand(user *accessTypes.User, command string) (string, error) {
 	if user == nil {
 		return "", errors.New("No user session")
 	}
 
-	if !stringInSlice(command, user.Objects) {
-		return "", errors.New(fmt.Sprintf("No object %s for user %s", command, user.Uid))
+	if ok, err := user.CheckPermission(accessTypes.IdObject(command), "Read"); !ok {
+		return "", err
 	}
 
 	switch command {
 	case "Name":
-		return s.api.Name(), nil
+		return m.api.Name(), nil
 	case "Time":
-		return s.api.Time(), nil
+		return m.api.Time(), nil
 	case "Disk":
-		return s.api.Disk(), nil
+		return m.api.Disk(), nil
 	case "Version":
-		return s.api.Version(), nil
+		return m.api.Version(), nil
 	case "Network":
-		return s.api.Network(), nil
+		return m.api.Network(), nil
 	case "Ram":
-		return s.api.Ram(), nil
+		return m.api.Ram(), nil
 	default:
 		return "", errors.New(fmt.Sprintf("no command in API \"%s\"", command))
 	}
-}
-func stringInSlice(str string, list []string) bool {
-	for _, v := range list {
-		if v == str {
-			return true
-		}
-	}
-	return false
 }

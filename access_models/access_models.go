@@ -9,10 +9,10 @@ import (
 )
 
 type AccessControl interface {
-	CreateUser(username string) (*accessTypes.User, error)
-	CreateRole(id accessTypes.IdRole, permissions []byte) error
-	CreateGroup(id accessTypes.IdGroup, permissions []byte) error
-	CreateObject(id accessTypes.IdObject, attributes []byte) error
+	CreateUser(uid, idp string, newRoles, newGroups []string) (*accessTypes.User, error)
+	CreateRole(id string, newPermissions map[accessTypes.IdObject]map[accessTypes.PermissionEnum]bool) (*accessTypes.Role, error)
+	CreateGroup(id string, newRoles []string) (*accessTypes.Group, error)
+	CreateObject(id accessTypes.IdObject) (*accessTypes.Object, error)
 
 	ReadUser(id accessTypes.Uid) (*accessTypes.User, error)
 	ReadRole(id accessTypes.Uid) (*accessTypes.Role, error)
