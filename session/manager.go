@@ -13,6 +13,22 @@ import (
 	"time"
 )
 
+// Manager представляет собой менеджер сессий для управления пользователями.
+type Manager struct {
+	mtx   sync.RWMutex
+	users map[string]*accessTypes.User
+
+	api          controllers.API
+	accessModel  access_models.AccessControl
+	tokenManager token_service.TokenManager
+}
+
+// GetUser возвращает пользователя по его токену.
+// Принимает:
+// - token: токен пользователя
+// Возвращает:
+// - *accessTypes.User: информация о пользователе
+// - error: ошибка, если таковая имеется
 func (m *Manager) GetUser(token string) (*accessTypes.User, error) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
@@ -25,15 +41,15 @@ func (m *Manager) GetUser(token string) (*accessTypes.User, error) {
 	return session, nil
 }
 
-type Manager struct {
-	mtx   sync.RWMutex
-	users map[string]*accessTypes.User
-
-	api          controllers.API
-	accessModel  access_models.AccessControl
-	tokenManager token_service.TokenManager
-}
-
+// NewSessionManager создает и возвращает новый экземпляр менеджера сессий.
+// Принимает:
+// - apiName: имя API
+// - modelName: имя модели доступа
+// - repoName: имя репозитория
+// - tokenManagerName: имя менеджера токенов
+// Возвращает:
+// - *Manager: экземпляр менеджера сессий
+// - error: ошибка, если таковая имеется
 func NewSessionManager(apiName, modelName,
 	repoName, tokenManagerName string) (*Manager, error) {
 
@@ -104,6 +120,11 @@ func NewSessionManager(apiName, modelName,
 	}, nil
 }
 
+// CloseSession закрывает сессию пользователя по его токену.
+// Принимает:
+// - token: токен пользователя
+// Возвращает:
+// - error: ошибка, если таковая имеется
 func (m *Manager) CloseSession(token string) error {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
@@ -117,6 +138,13 @@ func (m *Manager) CloseSession(token string) error {
 	return nil
 }
 
+// Authenticate аутентифицирует пользователя по его имени и паролю.
+// Принимает:
+// - username: имя пользователя
+// - password: пароль пользователя
+// Возвращает:
+// - string: токен аутентификации
+// - error: ошибка, если таковая имеется
 func (m *Manager) Authenticate(username, password string) (string, error) {
 
 	idp := "ldap"
@@ -143,7 +171,7 @@ func (m *Manager) Authenticate(username, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("User %s with password %s is %d\n",
+	fmt.Printf("User %s with password %s is %b\n",
 		username, password, isAuthenticate)
 
 	if !isAuthenticate {
@@ -155,11 +183,17 @@ func (m *Manager) Authenticate(username, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("User %s get new token for a %t\n", username, 24*time.Hour)
+	fmt.Printf("User %s get new token for a %b\n", username, 24*time.Hour)
 
 	return token, nil
 }
 
+// Authorize авторизует пользователя по его имени и токену.
+// Принимает:
+// - username: имя пользователя
+// - token: токен аутентификации
+// Возвращает:
+// - error: ошибка, если таковая имеется
 func (m *Manager) Authorize(username, token string) error {
 	//если уже авторизован то ретерн без ошибки
 	m.mtx.RLock()
@@ -181,6 +215,12 @@ func (m *Manager) Authorize(username, token string) error {
 	return nil
 }
 
+// ValidateToken проверяет действительность токена для пользователя.
+// Принимает:
+// - token: токен аутентификации
+// Возвращает:
+// - bool: true, если токен действителен, иначе false
+// - error: ошибка, если таковая имеется
 func (m *Manager) ValidateToken(token string) (bool, error) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
@@ -192,6 +232,13 @@ func (m *Manager) ValidateToken(token string) (bool, error) {
 	return m.tokenManager.ValidateToken(string(sessionUser.Uid), token)
 }
 
+// ExecuteCommand выполняет команду для пользователя.
+// Принимает:
+// - user: информация о пользователе
+// - command: команда для выполнения
+// Возвращает:
+// - string: результат выполнения команды
+// - error: ошибка, если таковая имеется
 func (m *Manager) ExecuteCommand(user *accessTypes.User, command string) (string, error) {
 	if user == nil {
 		return "", errors.New("No user session")

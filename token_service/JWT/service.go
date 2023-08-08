@@ -1,3 +1,4 @@
+// Package JWT предоставляет функциональность для работы с JWT токенами.
 package JWT
 
 import (
@@ -7,20 +8,30 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 )
 
+// secretKey используется для подписи и проверки JWT токенов.
 var secretKey = []byte("secret")
 
+// Claims представляет собой структуру данных, которая хранится в JWT токене.
 type Claims struct {
 	Username string
 	jwt.StandardClaims
 }
 
+// TokenService предоставляет методы для генерации и проверки JWT токенов.
 type TokenService struct {
 }
 
+// NewTokenService создает и возвращает новый экземпляр TokenService.
 func NewTokenService() *TokenService {
 	return &TokenService{}
 }
 
+// GenerateToken генерирует новый JWT токен для указанного имени пользователя.
+// Принимает:
+// - username: имя пользователя
+// Возвращает:
+// - string: сгенерированный JWT токен
+// - error: ошибка, если таковая имеется
 func (s *TokenService) GenerateToken(username string) (string, error) {
 	claims := &Claims{
 		Username: username,
@@ -33,6 +44,13 @@ func (s *TokenService) GenerateToken(username string) (string, error) {
 	return token.SignedString(secretKey)
 }
 
+// ValidateToken проверяет действительность JWT токена для указанного имени пользователя.
+// Принимает:
+// - username: имя пользователя
+// - tokenString: JWT токен для проверки
+// Возвращает:
+// - bool: true, если токен действителен, иначе false
+// - error: ошибка, если таковая имеется
 func (s TokenService) ValidateToken(username, tokenString string) (bool, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil

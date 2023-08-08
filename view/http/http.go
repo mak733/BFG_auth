@@ -3,7 +3,7 @@ package http
 import (
 	"BFG_auth/session"
 	"fmt"
-	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/swaggo/http-swagger"
 	"net/http"
 	"os"
 )

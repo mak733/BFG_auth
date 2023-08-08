@@ -1,3 +1,4 @@
+// Package etcd предоставляет реализацию хранилища пользователей на основе etcd.
 package etcd
 
 import (
@@ -9,18 +10,32 @@ import (
 	"time"
 )
 
-// UserRepository EtcdUserRepository is an etcd-based User repository
+// UserRepository - это структура, представляющая репозиторий пользователей на основе etcd.
 type UserRepository struct {
-	Client *clientv3.Client
+	Client *clientv3.Client // Client предоставляет интерфейс для взаимодействия с etcd.
 }
 
+// Create создает новую запись в etcd.
+//
+// Принимает:
+//   - kv: пару ключ-значение для сохранения.
+//
+// Возвращает:
+//   - error: ошибка, если таковая имеется.
 func (repo *UserRepository) Create(kv types.KV) error {
 	_, err := repo.Client.Put(context.Background(), string(kv.Key), string(kv.Value))
 	return err
 }
 
+// Read читает запись из etcd по заданному ключу.
+//
+// Принимает:
+//   - id: ключ для поиска.
+//
+// Возвращает:
+//   - types.KV: пару ключ-значение.
+//   - error: ошибка, если таковая имеется.
 func (repo *UserRepository) Read(id types.Key) (types.KV, error) {
-
 	resp, err := repo.Client.Get(context.Background(), string(id))
 	if err != nil {
 		return types.KV{}, err
@@ -35,16 +50,39 @@ func (repo *UserRepository) Read(id types.Key) (types.KV, error) {
 	return types.KV{Key: body.Key, Value: body.Value}, nil
 }
 
+// Update обновляет запись в etcd.
+//
+// Принимает:
+//   - kv: пару ключ-значение для обновления.
+//
+// Возвращает:
+//   - error: ошибка, если таковая имеется.
 func (repo *UserRepository) Update(kv types.KV) error {
 	_, err := repo.Client.Put(context.Background(), string(kv.Key), string(kv.Value))
 	return err
 }
 
+// Delete удаляет запись из etcd по заданному ключу.
+//
+// Принимает:
+//   - key: ключ для удаления.
+//
+// Возвращает:
+//   - error: ошибка, если таковая имеется.
 func (repo *UserRepository) Delete(key types.Key) error {
 	_, err := repo.Client.Delete(context.Background(), string(key))
 	return err
 }
 
+// NewEtcd создает новый экземпляр UserRepository с инициализированным etcd клиентом.
+//
+// Принимает:
+//   - endpoints: адреса etcd серверов.
+//   - dialTimeout: время ожидания при подключении.
+//
+// Возвращает:
+//   - *UserRepository: указатель на UserRepository.
+//   - error: ошибка, если таковая имеется.
 func NewEtcd(endpoints []string, dialTimeout time.Duration) (*UserRepository, error) {
 	cfg := clientv3.Config{
 		Endpoints:   endpoints,

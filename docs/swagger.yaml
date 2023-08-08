@@ -1,0 +1,94 @@
+info:
+  contact: {"ya.mak733@gmail.com"}
+paths:
+  /api:
+    get:
+      description: Get API details or execute a command
+      operationId: get-api
+      parameters:
+      - description: Command to execute
+        in: query
+        name: command
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: API Endpoint
+  /login:
+    get:
+      consumes:
+      - application/json
+      description: Get login page or authenticate a user
+      operationId: login
+      parameters:
+      - description: Username
+        in: formData
+        name: username
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Login Endpoint
+    post:
+      consumes:
+      - application/json
+      description: Get login page or authenticate a user
+      operationId: login
+      parameters:
+      - description: Username
+        in: formData
+        name: username
+        required: true
+        type: string
+      - description: Password
+        in: formData
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+      summary: Login Endpoint
+swagger: "2.0"
