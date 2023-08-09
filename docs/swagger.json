@@ -6,16 +6,16 @@
     "paths": {
         "/api": {
             "get": {
-                "description": "Get API details or execute a command",
+                "description": "API для получения результата команды",
                 "produces": [
                     "text/html"
                 ],
-                "summary": "API Endpoint",
+                "summary": "API Endpoint123",
                 "operationId": "get-api",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Command to execute",
+                        "description": "Command to execute. Available commands: 'Name', 'Time', 'Disk', 'Version', 'Network', 'Ram'",
                         "name": "command",
                         "in": "query"
                     }

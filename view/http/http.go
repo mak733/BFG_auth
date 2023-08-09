@@ -33,10 +33,10 @@ func (h *ViewHttp) StartServer(address string, sessionManager *session.Manager) 
 }
 
 // @Summary API Endpoint
-// @Description Get API details or execute a command
+// @Description API для получения результата команды из задания
 // @ID get-api
 // @Produce  html
-// @Param command query string false "Command to execute"
+// @Param command query string false "Command to execute. Available commands: 'Name', 'Time', 'Disk', 'Version', 'Network', 'Ram'"
 // @Success 200 {string} string "Success"
 // @Failure 403 {string} string "Forbidden"
 // @Failure 500 {string} string "Internal Server Error"
@@ -123,7 +123,6 @@ func (h *ViewHttp) handleApiRequests(w http.ResponseWriter, r *http.Request) {
 // @Router /login [get]
 // @Router /login [post]
 func (h *ViewHttp) handleLogin(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("handle login method is %s\n", r.Method)
 
 	switch r.Method {
 	case http.MethodGet:
