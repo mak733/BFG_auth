@@ -183,7 +183,7 @@ func (m *Manager) Authenticate(username, password string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("User %s get new token for a %b\n", username, 24*time.Hour)
+	fmt.Printf("User %s get new token for a %d\n", username, 24*time.Hour)
 
 	return token, nil
 }
